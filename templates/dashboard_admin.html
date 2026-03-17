@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h2 class="fw-bold">HR Executive Insights <span class="text-primary">(10+ Dynamic Metrics)</span></h2>
+        <div class="d-flex gap-2">
+            <a href="/admin/model-metrics" class="btn btn-outline-info">Model Metrics</a>
+            <a href="/logout" class="btn btn-outline-danger">Secure Logout</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-5">
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 bg-dark text-white text-center">
+                <h6>Total Headcount</h6>
+                <h3>{{ headcount }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 bg-primary text-white text-center">
+                <h6>Avg Productivity</h6>
+                <h3>{{ stats.avg_score }}%</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 bg-warning text-dark text-center">
+                <h6>High Burnout Alerts</h6>
+                <h3>{{ stats.high_risk_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 shadow-sm border-0 bg-success text-white text-center">
+                <h6>Total Predictions</h6>
+                <h3>{{ stats.total_predictions }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for chart_json in charts %}
+        <div class="col-xl-4 col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-download-png" data-chart-index="{{ loop.index }}">
+                            <i class="fas fa-download"></i> PNG
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-download-pdf" data-chart-index="{{ loop.index }}">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-print" data-chart-index="{{ loop.index }}">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                    </div>
+                    <div id="chart_{{ loop.index }}" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+    // Use the Jinja `tojson` filter so Python objects become valid JS values.
+    const chartData = {{ charts | tojson | safe }};
+
+    function downloadChartImage(chartId, format = 'png') {
+        const el = document.getElementById(chartId);
+        if (!el) return;
+        Plotly.downloadImage(el, { format, height: 500, width: 800, filename: chartId });
+    }
+
+    function downloadChartPdf(chartId) {
+        const el = document.getElementById(chartId);
+        if (!el) return;
+
+        Plotly.toImage(el, { format: 'png', height: 600, width: 900 }).then((dataUrl) => {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                downloadChartImage(chartId, 'png');
+                return;
+            }
+
+            const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const margin = 20;
+            pdf.addImage(dataUrl, 'PNG', margin, margin, pageW - (2 * margin), pageH - (2 * margin));
+            pdf.save(`${chartId}.pdf`);
+        });
+    }
+
+    function printChart(chartId) {
+        const el = document.getElementById(chartId);
+        if (!el) return;
+        Plotly.toImage(el, { format: 'png', height: 500, width: 800 }).then((dataUrl) => {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+            printWindow.document.write(`<img src="${dataUrl}" style="max-width: 100%;" />`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        });
+    }
+
+    (Array.isArray(chartData) ? chartData : []).forEach((maybeJson, index) => {
+        const data = typeof maybeJson === 'string' ? JSON.parse(maybeJson) : maybeJson;
+        const containerId = 'chart_' + (index + 1);
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        Plotly.newPlot(containerId, data.data, data.layout, {
+            responsive: true,
+            displayModeBar: false,
+        });
+    });
+
+    document.querySelectorAll('.btn-download-png').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            downloadChartImage('chart_' + idx, 'png');
+        });
+    });
+
+    document.querySelectorAll('.btn-download-pdf').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            downloadChartPdf('chart_' + idx);
+        });
+    });
+
+    document.querySelectorAll('.btn-print').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            printChart('chart_' + idx);
+        });
+    });
+</script>
+{% endblock %}

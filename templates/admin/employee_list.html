@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Employee Focus List</h2>
+            <div class="text-muted small">Targeted list based on dashboard drilldowns.</div>
+        </div>
+        <a class="btn btn-outline-primary" href="/admin/analytics{% if analytics_query %}?{{ analytics_query | urlencode }}{% endif %}">Back to Analytics</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            {% if employees and employees|length > 0 %}
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Avg Productivity</th>
+                            <th>Last Risk</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                        <tr>
+                            <td class="fw-semibold">{{ emp.employee_id }}</td>
+                            <td>{{ emp.employee_name or '—' }}</td>
+                            <td>{{ emp.department or '—' }}</td>
+                            <td>{{ "%.2f"|format(emp.avg_score or 0) }}%</td>
+                            <td>{{ emp.last_risk or '—' }}</td>
+                            <td>{{ emp.last_seen or '—' }}</td>
+                            <td class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" href="/admin/analytics?employee_id={{ emp.employee_id }}">Analytics</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="/predict?employee_id={{ emp.employee_id }}">Quick Predict</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No employees match the current drilldown.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

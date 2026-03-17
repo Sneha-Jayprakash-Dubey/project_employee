@@ -1,0 +1,721 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .analytics-shell {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 60%, #ecfeff 100%);
+        border-radius: 24px;
+        padding: 2rem;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    }
+    .filter-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+    }
+    .chart-card {
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+        background: #ffffff;
+    }
+    .chart-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    }
+    .chart-title {
+        font-weight: 700;
+        color: #0f172a;
+        text-decoration: none;
+        text-align: left;
+    }
+    .chart-title:hover {
+        color: #1d4ed8;
+        text-decoration: underline;
+    }
+    .chart-meta {
+        color: #64748b;
+    }
+    .chart-actions .btn {
+        border-radius: 999px;
+    }
+    .chart-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+        padding: 2rem;
+    }
+    .chart-modal.is-open {
+        display: flex;
+    }
+    .chart-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(6px);
+    }
+    .chart-modal-dialog {
+        position: relative;
+        background: #ffffff;
+        border-radius: 24px;
+        width: min(1100px, 95vw);
+        max-height: 90vh;
+        padding: 1.5rem 1.5rem 1.25rem;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        z-index: 1;
+    }
+    .chart-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .chart-modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .chart-modal-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .chart-modal-body {
+        flex: 1;
+        min-height: 420px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem;
+        background: #f8fafc;
+    }
+    body.modal-open {
+        overflow: hidden;
+    }
+</style>
+<div class="container-fluid py-4">
+    <div class="analytics-shell">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold">Analytics Studio</h2>
+                <p class="text-muted mb-0">Filter saved predictions and explore trends with export + drilldown.</p>
+            </div>
+            <a href="/admin/dashboard" class="btn btn-outline-primary">Back to Dashboard</a>
+        </div>
+
+        <form method="GET" class="row g-3 align-items-end mb-4 filter-card p-3 p-md-4">
+            <div class="col-auto">
+                <label class="form-label">Time window</label>
+                <select name="days" class="form-select">
+                    <option value="" {% if not days %}selected{% endif %}>All time</option>
+                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Employee ID</label>
+                <input type="text" name="employee_id" value="{{ employee_id or '' }}" class="form-control" placeholder="e.g. 101">
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Department</label>
+                <select name="department" class="form-select">
+                    <option value="" {% if not department %}selected{% endif %}>All departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}" {% if department == dept %}selected{% endif %}>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Risk category</label>
+                <select name="risk" class="form-select">
+                    <option value="" {% if not risk %}selected{% endif %}>All risks</option>
+                    {% for risk_opt in risk_options %}
+                    <option value="{{ risk_opt }}" {% if risk == risk_opt %}selected{% endif %}>{{ risk_opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Team size</label>
+                <select name="team_size_band" class="form-select">
+                    <option value="" {% if not team_size_band %}selected{% endif %}>All sizes</option>
+                    {% for opt in band_options.team_size %}
+                    <option value="{{ opt }}" {% if team_size_band == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Experience</label>
+                <select name="experience_band" class="form-select">
+                    <option value="" {% if not experience_band %}selected{% endif %}>All levels</option>
+                    {% for opt in band_options.experience %}
+                    <option value="{{ opt }}" {% if experience_band == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Salary band</label>
+                <select name="salary_band" class="form-select">
+                    <option value="" {% if not salary_band %}selected{% endif %}>All bands</option>
+                    {% for opt in band_options.salary %}
+                    <option value="{{ opt }}" {% if salary_band == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">Remote freq</label>
+                <select name="remote_band" class="form-select">
+                    <option value="" {% if not remote_band %}selected{% endif %}>All modes</option>
+                    {% for opt in band_options.remote %}
+                    <option value="{{ opt }}" {% if remote_band == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Apply filters</button>
+            </div>
+            {% if employee_id %}
+            <div class="col-auto">
+                <a href="/admin/analytics?days={{ days or '' }}&department={{ department or '' }}&risk={{ risk or '' }}&team_size_band={{ team_size_band or '' }}&experience_band={{ experience_band or '' }}&salary_band={{ salary_band or '' }}&remote_band={{ remote_band or '' }}" class="btn btn-outline-secondary">Clear employee filter</a>
+            </div>
+            {% endif %}
+        </form>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-2">Model Confidence</h5>
+                        {% if model_confidence is not none %}
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>Overall reliability</span>
+                            <span>{{ "%.2f"|format(model_confidence) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ model_confidence }}%;" aria-valuenow="{{ model_confidence }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">Train the model to compute confidence metrics.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-2">Data Quality</h5>
+                        {% if data_quality is not none %}
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>Completeness score</span>
+                            <span>{{ "%.2f"|format(data_quality) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ data_quality }}%;" aria-valuenow="{{ data_quality }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0">No data available to score quality yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-7">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="fw-bold mb-0">Cohort Comparison</h5>
+                            <span class="text-muted small">Current vs previous {{ compare_days }} days</span>
+                        </div>
+                        <div id="cohort_chart" style="height: 360px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-5">
+                <div class="card shadow-sm border-0 h-100 mb-4">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-3">Insights</h5>
+                        {% if insights and insights|length > 0 %}
+                        <ul class="mb-0">
+                            {% for insight in insights %}
+                            <li class="mb-2">{{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted mb-0">Not enough data to generate insights yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-3">Anomaly Alerts</h5>
+                        {% if anomalies and anomalies|length > 0 %}
+                        <ul class="mb-0">
+                            {% for anomaly in anomalies %}
+                            <li class="mb-2">{{ anomaly.message }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted mb-0">No sudden drops or risk spikes detected.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="fw-bold mb-0">Goal Tracking by Department</h5>
+                    <span class="text-muted small">Set target productivity (%) and track progress</span>
+                </div>
+                <form method="POST" action="/admin/analytics/goals">
+                    <input type="hidden" name="next" value="{{ analytics_url }}">
+                    {% if goal_rows and goal_rows|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th style="width: 140px;">Target (%)</th>
+                                    <th>Current Avg</th>
+                                    <th style="width: 220px;">Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in goal_rows %}
+                                <tr>
+                                    <td class="fw-semibold">{{ row.department }}</td>
+                                    <td>
+                                        <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm" name="goal_{{ row.department }}" value="{{ row.target if row.target is not none }}">
+                                    </td>
+                                    <td>
+                                        {% if row.current is not none %}
+                                        {{ "%.2f"|format(row.current) }}%
+                                        {% else %}
+                                        <span class="text-muted">No data</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.progress is not none %}
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {% if row.progress >= 100 %}bg-success{% elif row.progress >= 85 %}bg-info{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ row.progress }}%;" aria-valuenow="{{ row.progress }}" aria-valuemin="0" aria-valuemax="150"></div>
+                                        </div>
+                                        <div class="small text-muted mt-1">{{ "%.1f"|format(row.progress) }}%</div>
+                                        {% else %}
+                                        <span class="text-muted">Set a target</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No departments found yet. Run a few predictions first.</p>
+                    {% endif %}
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save Targets</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="fw-bold mb-0">Top 5 vs Bottom 5 Employees</h5>
+                    <span class="text-muted small">Key feature deltas</span>
+                </div>
+                {% if top_bottom.top and top_bottom.bottom %}
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <h6 class="fw-semibold">Top 5 (Avg Productivity)</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Dept</th>
+                                        <th>Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in top_bottom.top %}
+                                    <tr>
+                                        <td>{{ row.employee_id }}</td>
+                                        <td>{{ row.department or '—' }}</td>
+                                        <td>{{ "%.2f"|format(row.avg_score) }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h6 class="fw-semibold">Bottom 5 (Avg Productivity)</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Dept</th>
+                                        <th>Avg</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in top_bottom.bottom %}
+                                    <tr>
+                                        <td>{{ row.employee_id }}</td>
+                                        <td>{{ row.department or '—' }}</td>
+                                        <td>{{ "%.2f"|format(row.avg_score) }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% if top_bottom.deltas and top_bottom.deltas|length > 0 %}
+                <div class="mt-3">
+                    <h6 class="fw-semibold">Feature Deltas (Top - Bottom)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Feature</th>
+                                    <th>Top Avg</th>
+                                    <th>Bottom Avg</th>
+                                    <th>Delta</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in top_bottom.deltas %}
+                                <tr>
+                                    <td>{{ row.label }}</td>
+                                    <td>{{ row.top_avg }}</td>
+                                    <td>{{ row.bottom_avg }}</td>
+                                    <td class="{% if row.delta > 0 %}text-success{% elif row.delta < 0 %}text-danger{% endif %}">{{ row.delta }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">Not enough data to compare top and bottom cohorts yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row g-4">
+            {% for chart_json in charts %}
+            <div class="col-xl-4 col-lg-6">
+                <div class="card shadow-sm h-100 chart-card" data-chart-index="{{ loop.index }}">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
+                            <button type="button" class="btn btn-link p-0 chart-title" data-chart-index="{{ loop.index }}">Chart {{ loop.index }}</button>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" href="/admin/analytics/chart/{{ loop.index }}?days={{ days or '' }}&employee_id={{ employee_id or '' }}&department={{ department or '' }}&risk={{ risk or '' }}&team_size_band={{ team_size_band or '' }}&experience_band={{ experience_band or '' }}&salary_band={{ salary_band or '' }}&remote_band={{ remote_band or '' }}" target="_blank">Fullscreen</a>
+                                <button type="button" class="btn btn-sm btn-primary open-chart" data-chart-index="{{ loop.index }}">Open</button>
+                            </div>
+                        </div>
+                        <div class="chart-meta small mb-2">Click the card or title to expand.</div>
+                        <div id="chart_{{ loop.index }}" class="chart-container flex-grow-1" data-drilldown="{{ 1 if chart_drilldowns[loop.index0] else 0 }}" data-drilldown-type="{{ chart_drilldowns[loop.index0] or '' }}" style="height: 340px;"></div>
+                        <div class="chart-actions mt-3 d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-download-png" data-chart-index="{{ loop.index }}">
+                                <i class="fas fa-download"></i> PNG
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-download-pdf" data-chart-index="{{ loop.index }}">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-print" data-chart-index="{{ loop.index }}">
+                                <i class="fas fa-print"></i> Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="chart-modal" id="chartModal" aria-hidden="true">
+    <div class="chart-modal-backdrop" data-modal-close="1"></div>
+    <div class="chart-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle">
+        <div class="chart-modal-header">
+            <div class="chart-modal-title" id="chartModalTitle">Chart Detail</div>
+            <div class="chart-modal-actions">
+                <a class="btn btn-sm btn-outline-primary" id="modalOpenTab" target="_blank">Fullscreen</a>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="modalDownloadPng">PNG</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="modalDownloadPdf">PDF</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="modalPrint">Print</button>
+                <button type="button" class="btn btn-sm btn-dark" id="chartModalClose">Close</button>
+            </div>
+        </div>
+        <div id="chartModalBody" class="chart-modal-body"></div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+    const chartData = {{ charts | tojson }};
+    const cohortChart = {{ cohort_chart | tojson }};
+    const chartMeta = [];
+
+    function getQueryParams() {
+        const params = new URLSearchParams(window.location.search);
+        return params;
+    }
+
+    function setQueryParam(key, value) {
+        const params = getQueryParams();
+        if (value === null || value === undefined || value === "") {
+            params.delete(key);
+        } else {
+            params.set(key, value);
+        }
+        window.location.search = params.toString();
+    }
+
+    function buildEmployeeListUrl(overrides = {}) {
+        const params = getQueryParams();
+        Object.entries(overrides).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === "") {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+        const qs = params.toString();
+        return qs ? `/admin/employees?${qs}` : '/admin/employees';
+    }
+
+    function downloadChartImage(chartId, format = 'png') {
+        const element = document.getElementById(chartId);
+        if (!element) return;
+        Plotly.downloadImage(element, {
+            format,
+            height: 600,
+            width: 800,
+            filename: chartId,
+        });
+    }
+
+    function downloadChartPdf(chartId) {
+        const element = document.getElementById(chartId);
+        if (!element) return;
+
+        Plotly.toImage(element, { format: 'png', width: 900, height: 600 }).then((dataUrl) => {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                downloadChartImage(chartId, 'png');
+                return;
+            }
+
+            const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const margin = 20;
+            pdf.addImage(dataUrl, 'PNG', margin, margin, pageW - (2 * margin), pageH - (2 * margin));
+            pdf.save(`${chartId}.pdf`);
+        });
+    }
+
+    function printChart(chartId) {
+        const element = document.getElementById(chartId);
+        if (!element) return;
+        Plotly.toImage(element, {format: 'png', width: 800, height: 600}).then((dataUrl) => {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+            printWindow.document.write(`<img src="${dataUrl}" style="max-width:100%;" />`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        });
+    }
+
+    if (cohortChart) {
+        const cohortEl = document.getElementById('cohort_chart');
+        if (cohortEl) {
+            Plotly.newPlot(cohortEl, cohortChart.data, cohortChart.layout, {
+                responsive: true,
+                displayModeBar: false,
+            });
+        }
+    } else {
+        const cohortEl = document.getElementById('cohort_chart');
+        if (cohortEl) {
+            cohortEl.innerHTML = '<div class="text-muted">Not enough data for cohort comparison yet.</div>';
+        }
+    }
+
+    chartData.forEach((maybeJson, index) => {
+        const data = typeof maybeJson === 'string' ? JSON.parse(maybeJson) : maybeJson;
+        const containerId = 'chart_' + (index + 1);
+        const container = document.getElementById(containerId);
+
+        if (!container) return;
+
+        const titleText = (data.layout && data.layout.title && (data.layout.title.text || data.layout.title)) || `Chart ${index + 1}`;
+        chartMeta[index] = { data, title: titleText };
+        const titleButton = document.querySelector(`.chart-title[data-chart-index="${index + 1}"]`);
+        if (titleButton) {
+            titleButton.textContent = titleText;
+        }
+
+        Plotly.newPlot(container, data.data, data.layout, {
+            responsive: true,
+            displayModeBar: false,
+        });
+
+        const drilldown = container.dataset.drilldown === '1';
+        const drilldownType = container.dataset.drilldownType || '';
+        if (drilldown) {
+            container.on('plotly_click', (event) => {
+                const point = event.points && event.points[0];
+                if (!point) return;
+                const xValue = point.x || point.label;
+                if (!xValue) return;
+                if (drilldownType === 'employee') {
+                    window.location.href = buildEmployeeListUrl({ employee_id: xValue });
+                } else if (drilldownType === 'department') {
+                    window.location.href = buildEmployeeListUrl({ department: xValue });
+                } else if (drilldownType === 'risk') {
+                    window.location.href = buildEmployeeListUrl({ risk: xValue });
+                } else {
+                    setQueryParam('employee_id', xValue);
+                }
+            });
+        }
+    });
+
+    const modal = document.getElementById('chartModal');
+    const modalBody = document.getElementById('chartModalBody');
+    const modalTitle = document.getElementById('chartModalTitle');
+    const modalClose = document.getElementById('chartModalClose');
+    const modalDownloadPng = document.getElementById('modalDownloadPng');
+    const modalDownloadPdf = document.getElementById('modalDownloadPdf');
+    const modalPrint = document.getElementById('modalPrint');
+    const modalOpenTab = document.getElementById('modalOpenTab');
+    let activeChartIndex = null;
+
+    function buildShareUrl(index) {
+        const params = getQueryParams();
+        const qs = params.toString();
+        return qs ? `/admin/analytics/chart/${index}?${qs}` : `/admin/analytics/chart/${index}`;
+    }
+
+    function openChartModal(index) {
+        const meta = chartMeta[index - 1];
+        if (!meta) return;
+        activeChartIndex = index;
+        modalTitle.textContent = meta.title;
+        if (modalOpenTab) {
+            modalOpenTab.href = buildShareUrl(index);
+        }
+        modal.classList.add('is-open');
+        document.body.classList.add('modal-open');
+        Plotly.newPlot(modalBody, meta.data.data, meta.data.layout, {
+            responsive: true,
+            displayModeBar: true,
+        });
+    }
+
+    function closeChartModal() {
+        modal.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+        Plotly.purge(modalBody);
+        activeChartIndex = null;
+    }
+
+    function handleModalAction(action) {
+        if (!activeChartIndex) return;
+        const chartId = 'chart_' + activeChartIndex;
+        if (action === 'png') downloadChartImage(chartId, 'png');
+        if (action === 'pdf') downloadChartPdf(chartId);
+        if (action === 'print') printChart(chartId);
+    }
+
+    document.querySelectorAll('.open-chart').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const idx = parseInt(button.dataset.chartIndex, 10);
+            openChartModal(idx);
+        });
+    });
+
+    document.querySelectorAll('.chart-title').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const idx = parseInt(button.dataset.chartIndex, 10);
+            openChartModal(idx);
+        });
+    });
+
+    document.querySelectorAll('.chart-card').forEach((card) => {
+        card.addEventListener('click', (event) => {
+            const idx = parseInt(card.dataset.chartIndex, 10);
+            const container = document.getElementById('chart_' + idx);
+            const drilldown = container && container.dataset.drilldown === '1';
+            if (drilldown && event.target.closest('.chart-container')) {
+                return;
+            }
+            if (event.target.closest('.chart-actions') || event.target.closest('button')) {
+                return;
+            }
+            openChartModal(idx);
+        });
+    });
+
+    if (modalClose) {
+        modalClose.addEventListener('click', closeChartModal);
+    }
+    modal.addEventListener('click', (event) => {
+        if (event.target.dataset.modalClose) {
+            closeChartModal();
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+            closeChartModal();
+        }
+    });
+
+    modalDownloadPng.addEventListener('click', () => handleModalAction('png'));
+    modalDownloadPdf.addEventListener('click', () => handleModalAction('pdf'));
+    modalPrint.addEventListener('click', () => handleModalAction('print'));
+
+    document.querySelectorAll('.btn-download-png').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            downloadChartImage('chart_' + idx, 'png');
+        });
+    });
+
+    document.querySelectorAll('.btn-download-pdf').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            downloadChartPdf('chart_' + idx);
+        });
+    });
+
+    document.querySelectorAll('.btn-print').forEach((button) => {
+        button.addEventListener('click', () => {
+            const idx = button.dataset.chartIndex;
+            printChart('chart_' + idx);
+        });
+    });
+</script>
+{% endblock %}

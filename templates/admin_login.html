@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow-lg border-0" style="width: 100%; max-width: 400px; border-radius: 15px;">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <i class="fas fa-user-shield fa-3x text-primary mb-3"></i>
+                <h3 class="fw-bold">Admin Portal</h3>
+                <p class="text-muted small">Enter HR credentials to continue</p>
+            </div>
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-user text-muted"></i></span>
+                        <input type="text" name="username" class="form-control bg-light border-start-0" placeholder="e.g. hr" required>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                        <input type="password" name="password" class="form-control bg-light border-start-0" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm fw-bold">
+                    Login to Dashboard
+                </button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <a href="/" class="text-decoration-none small text-muted">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card border-0 shadow-sm mx-auto" style="max-width: 400px; margin-top: 50px;">
+    <div class="card-body p-5">
+        <h3 class="fw-bold mb-4 text-center">Employee Portal</h3>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Employee ID</label>
+                <input type="text" name="employee_id" class="form-control" placeholder="EMP123" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

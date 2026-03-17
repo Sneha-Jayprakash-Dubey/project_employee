@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm p-4">
+    <h3>Advanced HR Prediction</h3>
+    <form action="/predict" method="POST">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Employee ID</label>
+                <input type="text" name="employee_id" class="form-control" placeholder="e.g. 101" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Employee Name</label>
+                <input type="text" name="employee_name" class="form-control" placeholder="Full name">
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Age</label>
+                <input type="number" name="Age" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Years at Company</label>
+                <input type="number" name="Years_At_Company" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Monthly Salary</label>
+                <input type="number" name="Monthly_Salary" class="form-control" required>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Work Hours / Week</label>
+                <input type="number" name="Work_Hours_Per_Week" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Overtime Hours</label>
+                <input type="number" name="Overtime_Hours" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Satisfaction Score (1-5)</label>
+                <input type="number" name="Employee_Satisfaction_Score" class="form-control" min="1" max="5" step="0.01" required>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Resigned?</label>
+                <select name="Resigned" class="form-control">
+                    <option value="0" selected>No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Projects Handled</label>
+                <input type="number" name="Projects_Handled" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Sick Days</label>
+                <input type="number" name="Sick_Days" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Remote Work Frequency (days/week)</label>
+                <input type="number" name="Remote_Work_Frequency" class="form-control" required>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Team Size</label>
+                <input type="number" name="Team_Size" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Training Hours (per month)</label>
+                <input type="number" name="Training_Hours" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Promotions (last 3 years)</label>
+                <input type="number" name="Promotions" class="form-control" required>
+            </div>
+
+            <div class="col-md-4 mb-3">
+                <label>Department</label>
+                <select name="Department" class="form-control">
+                    {% for dept in departments %}
+                    <option>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Gender</label>
+                <select name="Gender" class="form-control">
+                    {% for g in genders %}
+                    <option>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Education Level</label>
+                <select name="Education_Level" class="form-control">
+                    {% for level in education_levels %}
+                    <option>{{ level }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Generate Enterprise Report</button>
+    </form>
+</div>
+{% endblock %}

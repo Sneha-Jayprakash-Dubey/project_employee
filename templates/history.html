@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark">Employee Assessment Logs</h2>
+        <a href="/download_report" class="btn btn-primary shadow-sm">
+            <i class="fas fa-file-pdf me-2"></i>Export PDF Audit
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="bg-light text-muted small text-uppercase">
+                <tr>
+                    <th class="ps-4">Ref ID</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th style="width: 30%">Productivity Result</th>
+                    <th>Risk Status</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+
+                    <td class="ps-4 text-muted">#{{ row['id'] }}</td>
+
+                    <td>
+                        <div class="fw-semibold">{{ row['employee_name'] or 'N/A' }}</div>
+                        <small class="text-muted">ID: {{ row['employee_id'] }}</small>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-secondary">{{ row['department'] or 'N/A' }}</span>
+                    </td>
+
+                    <td>
+                        <span class="text-muted">{{ row['created_at'] }}</span>
+                    </td>
+
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3 fw-bold text-primary">{{ row['result'] }}%</span>
+
+                            <div class="progress flex-grow-1" style="height: 8px; border-radius: 10px; background-color: #f1f5f9;">
+                                <div class="progress-bar bg-primary js-progress-bar"
+                                    role="progressbar"
+                                    data-width="{{ row['result'] }}"
+                                    aria-valuenow="{{ row['result'] }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                    <span class="badge rounded-pill
+                    {% if 'High' in row['risk'] %}
+                    bg-danger
+                    {% else %}
+                    bg-success
+                    {% endif %}
+                    px-3">
+                    {{ row['risk'] }}
+                    </span>
+                    </td>
+
+                    <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-light border px-3">View Details</button>
+                    </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.js-progress-bar').forEach(bar => {
+        bar.style.width = bar.getAttribute('data-width') + '%';
+    });
+</script>
+{% endblock %}

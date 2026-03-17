@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .chart-fullscreen-shell {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 60%, #ecfeff 100%);
+        border-radius: 24px;
+        padding: 2rem;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+    }
+    .chart-stage {
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
+        background: #ffffff;
+        min-height: 520px;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #0f172a;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .chip-muted {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="chart-fullscreen-shell">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+            <div>
+                <h2 class="fw-bold mb-1">{{ chart_title }}</h2>
+                <div class="text-muted small">Shareable analytics view</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-primary" href="/admin/analytics?days={{ days or '' }}&employee_id={{ employee_id or '' }}&department={{ department or '' }}&risk={{ risk or '' }}&team_size_band={{ team_size_band or '' }}&experience_band={{ experience_band or '' }}&salary_band={{ salary_band or '' }}&remote_band={{ remote_band or '' }}">Back to Analytics</a>
+                <button class="btn btn-outline-secondary" type="button" id="downloadPng">PNG</button>
+                <button class="btn btn-outline-secondary" type="button" id="downloadPdf">PDF</button>
+                <button class="btn btn-outline-secondary" type="button" id="printChart">Print</button>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="chip">Chart #{{ chart_index }}</span>
+            <span class="chip {% if not days %}chip-muted{% endif %}">Days: {{ days or 'All' }}</span>
+            <span class="chip {% if not employee_id %}chip-muted{% endif %}">Employee: {{ employee_id or 'All' }}</span>
+            <span class="chip {% if not department %}chip-muted{% endif %}">Department: {{ department or 'All' }}</span>
+            <span class="chip {% if not risk %}chip-muted{% endif %}">Risk: {{ risk or 'All' }}</span>
+            <span class="chip {% if not team_size_band %}chip-muted{% endif %}">Team Size: {{ team_size_band or 'All' }}</span>
+            <span class="chip {% if not experience_band %}chip-muted{% endif %}">Experience: {{ experience_band or 'All' }}</span>
+            <span class="chip {% if not salary_band %}chip-muted{% endif %}">Salary: {{ salary_band or 'All' }}</span>
+            <span class="chip {% if not remote_band %}chip-muted{% endif %}">Remote: {{ remote_band or 'All' }}</span>
+        </div>
+
+        <div id="chart_fullscreen" class="chart-stage"></div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+    const chartData = {{ chart_json | tojson }};
+    const chartEl = document.getElementById('chart_fullscreen');
+    Plotly.newPlot(chartEl, chartData.data, chartData.layout, {
+        responsive: true,
+        displayModeBar: true,
+    });
+
+    function downloadChartImage(format = 'png') {
+        Plotly.downloadImage(chartEl, {
+            format,
+            height: 700,
+            width: 1100,
+            filename: 'chart_{{ chart_index }}',
+        });
+    }
+
+    function downloadChartPdf() {
+        Plotly.toImage(chartEl, { format: 'png', width: 1100, height: 700 }).then((dataUrl) => {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                downloadChartImage('png');
+                return;
+            }
+            const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const margin = 24;
+            pdf.addImage(dataUrl, 'PNG', margin, margin, pageW - (2 * margin), pageH - (2 * margin));
+            pdf.save(`chart_{{ chart_index }}.pdf`);
+        });
+    }
+
+    function printChart() {
+        Plotly.toImage(chartEl, { format: 'png', width: 1100, height: 700 }).then((dataUrl) => {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+            printWindow.document.write(`<img src="${dataUrl}" style="max-width:100%;" />`);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        });
+    }
+
+    document.getElementById('downloadPng').addEventListener('click', () => downloadChartImage('png'));
+    document.getElementById('downloadPdf').addEventListener('click', downloadChartPdf);
+    document.getElementById('printChart').addEventListener('click', printChart);
+</script>
+{% endblock %}

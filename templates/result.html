@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+            <h3 class="mb-1">Prediction Results</h3>
+            <div class="text-muted">Detailed score, confidence, and impact analytics for this assessment.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/predict" class="btn btn-outline-primary">Run Another</a>
+            <a href="/history" class="btn btn-outline-secondary">View History</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Predicted Score</h6>
+                    <h2 class="fw-bold">{{ prediction }}%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Burnout Risk</h6>
+                    <h2 class="fw-bold">
+                        <span class="badge {{ 'bg-danger' if 'High' in burnout else 'bg-warning' if 'Moderate' in burnout else 'bg-success' }} py-2 px-3">
+                            {{ burnout }}
+                        </span>
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Estimated Prediction Confidence</h6>
+                    <h2 class="fw-bold">{{ prediction_confidence | default(0) }}%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Model Accuracy (R² based)</h6>
+                    <h2 class="fw-bold">{{ model_accuracy | default(0) }}%</h2>
+                    {% if burnout_confidence is not none %}
+                    <div class="small text-muted mt-1">Burnout class confidence: {{ burnout_confidence }}%</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-2">Productivity Gauge</h5>
+                    <div id="productivity-gauge" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-2">Input Snapshot</h5>
+                    <div id="inputs-chart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-2">Top Influencers</h5>
+                    {% if shap_chart %}
+                    <div id="shap-chart" style="height: 340px;"></div>
+                    {% else %}
+                    <div class="py-5 text-center text-muted">AI explanation is not available right now.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-2">Inputs Used</h5>
+                    <div class="row g-3">
+                        {% for label, value in inputs.items() %}
+                        <div class="col-6">
+                            <div class="small text-muted">{{ label }}</div>
+                            <div class="fw-semibold">{{ value if value is not none else '-' }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <hr>
+                    <div class="small text-muted">
+                        Classification accuracy: {{ ((classification_accuracy | default(0) | float) * 100) | round(2) }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script id="result-data" type="application/json">
+{{ {
+    "prediction": prediction | default(0, true),
+    "modelAccuracy": model_accuracy | default(0, true),
+    "shapData": shap_chart | default([], true),
+    "inputMap": inputs | default({}, true)
+} | tojson }}
+</script>
+<script>
+    const payload = JSON.parse(document.getElementById("result-data").textContent || "{}");
+    const prediction = Number(payload.prediction || 0);
+    const modelAccuracy = Number(payload.modelAccuracy || 0);
+    const shapData = Array.isArray(payload.shapData) ? payload.shapData : [];
+    const inputMap = payload.inputMap && typeof payload.inputMap === "object" ? payload.inputMap : {};
+
+    Plotly.newPlot("productivity-gauge", [{
+        type: "indicator",
+        mode: "gauge+number",
+        value: prediction,
+        title: { text: "Predicted Productivity" },
+        gauge: {
+            axis: { range: [0, 100] },
+            bar: { color: "#0ea5e9" },
+            steps: [
+                { range: [0, 33], color: "#fee2e2" },
+                { range: [33, 66], color: "#fef3c7" },
+                { range: [66, 100], color: "#dcfce7" }
+            ],
+            threshold: {
+                line: { color: "#1e3a8a", width: 4 },
+                thickness: 0.75,
+                value: modelAccuracy
+            }
+        }
+    }], {
+        margin: { t: 20, b: 10, l: 10, r: 10 },
+        template: "plotly_white"
+    }, { responsive: true, displayModeBar: false });
+
+    const labels = Object.keys(inputMap);
+    const values = labels.map((k) => Number(inputMap[k] || 0));
+    Plotly.newPlot("inputs-chart", [{
+        type: "bar",
+        x: labels,
+        y: values,
+        marker: { color: "#4f46e5" }
+    }], {
+        margin: { t: 20, b: 120, l: 40, r: 20 },
+        xaxis: { tickangle: -30 },
+        yaxis: { title: "Value" },
+        template: "plotly_white"
+    }, { responsive: true, displayModeBar: false });
+
+    if (Array.isArray(shapData) && shapData.length) {
+        Plotly.newPlot("shap-chart", [{
+            type: "bar",
+            x: shapData.map((r) => r.impact),
+            y: shapData.map((r) => r.feature),
+            orientation: "h",
+            marker: { color: shapData.map((r) => r.impact >= 0 ? "#16a34a" : "#dc2626") }
+        }], {
+            margin: { l: 160, r: 20, t: 20, b: 30 },
+            xaxis: { title: "Impact on Score" },
+            template: "plotly_white"
+        }, { responsive: true, displayModeBar: false });
+    }
+</script>
+{% endblock %}

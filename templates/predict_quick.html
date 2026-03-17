@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm p-4 mx-auto" style="max-width: 600px;">
+    <h3>Quick Performance Check</h3>
+    <p class="text-muted">Enter basic employee details for tracking, then run the quick prediction.</p>
+    <form action="/predict" method="POST">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Employee ID</label>
+                <input type="text" name="employee_id" class="form-control" placeholder="e.g. 101" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Employee Name</label>
+                <input type="text" name="employee_name" class="form-control" placeholder="Jane Doe" required>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label>Department (optional)</label>
+                <select name="Department" class="form-control">
+                    <option value="">Choose department</option>
+                    <option>Engineering</option>
+                    <option>Finance</option>
+                    <option>HR</option>
+                    <option>IT</option>
+                    <option>Legal</option>
+                    <option>Marketing</option>
+                    <option>Operations</option>
+                    <option>Sales</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label>Work Hours Per Week</label>
+            <input type="number" name="Work_Hours_Per_Week" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Overtime Hours</label>
+            <input type="number" name="Overtime_Hours" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Satisfaction Score (1-5)</label>
+            <input type="number" name="Satisfaction_Score" class="form-control" min="1" max="5" step="0.01" required>
+            <small class="text-muted">If you enter 0-100 values, the app auto-converts internally.</small>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Analyze Now</button>
+    </form>
+</div>
+{% endblock %}
