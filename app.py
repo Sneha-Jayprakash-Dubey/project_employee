@@ -1,6 +1,7 @@
 import json
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+from datetime import datetime
 from flask import g
 import pandas as pd
 import numpy as np
@@ -34,7 +35,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "hr_ai_secret")
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "hr")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "hr123")
-AUTO_TRAIN_ON_BOOT = os.environ.get("AUTO_TRAIN_ON_BOOT", "1") == "1"
+AUTO_TRAIN_ON_BOOT = os.environ.get("AUTO_TRAIN_ON_BOOT", "0") == "1"
 ALLOW_PROD_AUTO_TRAIN = os.environ.get("ALLOW_PROD_AUTO_TRAIN", "0") == "1"
 
 # Harden session cookies for production.
@@ -84,6 +85,56 @@ def chart_title_from_json(chart_json, fallback):
     if isinstance(title, dict):
         title = title.get("text")
     return title or fallback
+
+
+def get_model_status():
+    """Return status and last trained time for the model artifacts."""
+    model_files = [
+        os.path.join(MODEL_DIR, "productivity_model.pkl"),
+        os.path.join(MODEL_DIR, "scaler.pkl"),
+        os.path.join(MODEL_DIR, "model_features.pkl"),
+        os.path.join(MODEL_DIR, "burnout_classifier.pkl"),
+        os.path.join(MODEL_DIR, "burnout_classifier.pkl.labels"),
+    ]
+    metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+
+    def is_lfs_pointer(path: str) -> bool:
+        try:
+            with open(path, "rb") as f:
+                head = f.read(200)
+            return b"git-lfs.github.com/spec" in head
+        except Exception:
+            return False
+
+    missing = [p for p in model_files if not os.path.exists(p) or is_lfs_pointer(p)]
+    status = "trained" if not missing else "missing"
+
+    last_trained = None
+    if os.path.exists(metrics_path):
+        try:
+            with open(metrics_path, "r") as f:
+                metrics = json.load(f)
+            metadata = metrics.get("metadata", {}) if isinstance(metrics, dict) else {}
+            last_trained = metadata.get("trained_at") or metadata.get("timestamp")
+        except Exception:
+            last_trained = None
+        if not last_trained:
+            try:
+                last_trained = datetime.fromtimestamp(os.path.getmtime(metrics_path)).isoformat(sep=" ")
+            except Exception:
+                last_trained = None
+    elif model_files:
+        try:
+            latest = max(os.path.getmtime(p) for p in model_files if os.path.exists(p))
+            last_trained = datetime.fromtimestamp(latest).isoformat(sep=" ")
+        except Exception:
+            last_trained = None
+
+    return {
+        "status": status,
+        "missing": [os.path.basename(p) for p in missing],
+        "last_trained": last_trained,
+    }
 
 
 def build_analytics_query(
@@ -476,12 +527,15 @@ def admin_dashboard():
         charts = [fig_to_json_obj(empty_fig)]
         chart_drilldowns = [None]
 
+    model_status = get_model_status()
+
     return render_template(
         "dashboard_admin.html",
         df=df,
         charts=charts,
         stats=stats,
         headcount=headcount,
+        model_status=model_status,
     )
 
 
