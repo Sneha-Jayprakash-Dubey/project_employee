@@ -211,6 +211,14 @@ def ensure_model_assets(force_retrain: bool = False):
     classifier_path = os.path.join(BASE_DIR, "burnout_classifier.pkl")
     label_encoder_path = classifier_path + ".labels"
 
+    def is_lfs_pointer(path: str) -> bool:
+        try:
+            with open(path, "rb") as f:
+                head = f.read(200)
+            return b"git-lfs.github.com/spec" in head
+        except Exception:
+            return False
+
     need_training = force_retrain or not (
         os.path.exists(model_path)
         and os.path.exists(scaler_path)
@@ -228,6 +236,11 @@ def ensure_model_assets(force_retrain: bool = False):
         version = metadata.get("model_version")
         if (not reg.get("best_model")) or (not cls.get("best_model")) or (version != MODEL_VERSION):
             need_training = True
+        if any(
+            is_lfs_pointer(p)
+            for p in (model_path, scaler_path, features_path, classifier_path, label_encoder_path)
+        ):
+            need_training = True
 
     if need_training:
         print("Training model artifacts using dataset...")
@@ -240,11 +253,27 @@ def ensure_model_assets(force_retrain: bool = False):
             metrics_path=os.path.join(BASE_DIR, "model", "metrics.json"),
         )
 
-    model = joblib.load(model_path)
-    scaler = joblib.load(scaler_path)
-    features = joblib.load(features_path)
-    classifier = joblib.load(classifier_path)
-    label_encoder = joblib.load(label_encoder_path)
+    try:
+        model = joblib.load(model_path)
+        scaler = joblib.load(scaler_path)
+        features = joblib.load(features_path)
+        classifier = joblib.load(classifier_path)
+        label_encoder = joblib.load(label_encoder_path)
+    except Exception as exc:
+        print("Model load failed; retraining. Error:", exc)
+        train_and_save_model(
+            data_path=os.path.join(BASE_DIR, "dataset", "employee_data.csv"),
+            model_path=model_path,
+            scaler_path=scaler_path,
+            features_path=features_path,
+            classifier_path=classifier_path,
+            metrics_path=os.path.join(BASE_DIR, "model", "metrics.json"),
+        )
+        model = joblib.load(model_path)
+        scaler = joblib.load(scaler_path)
+        features = joblib.load(features_path)
+        classifier = joblib.load(classifier_path)
+        label_encoder = joblib.load(label_encoder_path)
 
     return model, scaler, features, classifier, label_encoder
 
