@@ -34,6 +34,8 @@ app.secret_key = os.environ.get("SECRET_KEY", "hr_ai_secret")
 
 ADMIN_USER = os.environ.get("ADMIN_USER", "hr")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "hr123")
+AUTO_TRAIN_ON_BOOT = os.environ.get("AUTO_TRAIN_ON_BOOT", "1") == "1"
+ALLOW_PROD_AUTO_TRAIN = os.environ.get("ALLOW_PROD_AUTO_TRAIN", "0") == "1"
 
 # Harden session cookies for production.
 app.config.update(
@@ -206,7 +208,7 @@ def load_metrics():
         return {}
 
 
-def ensure_model_assets(force_retrain: bool = False):
+def ensure_model_assets(force_retrain: bool = False, allow_train: bool = True):
     """Load model artifacts; if missing or forced, train using the dataset."""
 
     os.makedirs(MODEL_DIR, exist_ok=True)
@@ -247,6 +249,10 @@ def ensure_model_assets(force_retrain: bool = False):
         ):
             need_training = True
 
+    if need_training and not allow_train:
+        # Skip training in environments where auto-train is disabled.
+        return None, None, [], None, None
+
     if need_training:
         print("Training model artifacts using dataset...")
         train_and_save_model(
@@ -266,6 +272,8 @@ def ensure_model_assets(force_retrain: bool = False):
         label_encoder = joblib.load(label_encoder_path)
     except Exception as exc:
         print("Model load failed; retraining. Error:", exc)
+        if not allow_train:
+            return None, None, [], None, None
         train_and_save_model(
             data_path=os.path.join(BASE_DIR, "dataset", "employee_data.csv"),
             model_path=model_path,
@@ -283,7 +291,12 @@ def ensure_model_assets(force_retrain: bool = False):
     return model, scaler, features, classifier, label_encoder
 
 
-model, scaler, features, classifier, label_encoder = ensure_model_assets()
+allow_boot_train = AUTO_TRAIN_ON_BOOT and (
+    os.environ.get("FLASK_ENV") != "production" or ALLOW_PROD_AUTO_TRAIN
+)
+model, scaler, features, classifier, label_encoder = ensure_model_assets(
+    allow_train=allow_boot_train
+)
 BASELINE_FEATURE_VALUES = load_baseline_feature_values()
 DATASET_SCALE_INFO = load_dataset_scale_info()
 
@@ -291,7 +304,9 @@ DATASET_SCALE_INFO = load_dataset_scale_info()
 def reload_model_assets(retrain: bool = False):
     """Reload model artifacts into global variables."""
     global model, scaler, features, classifier, label_encoder
-    model, scaler, features, classifier, label_encoder = ensure_model_assets(force_retrain=retrain)
+    model, scaler, features, classifier, label_encoder = ensure_model_assets(
+        force_retrain=retrain, allow_train=True
+    )
 
 
 # -------------------------------
@@ -1633,6 +1648,11 @@ def build_feature_vector(form):
 def employee_predict():
 
     if request.method == "POST":
+        if model is None or scaler is None or classifier is None or not features:
+            return (
+                "Model not ready. Please ask the admin to retrain from the dashboard.",
+                503,
+            )
 
         try:
             # Build complete feature set using available inputs
