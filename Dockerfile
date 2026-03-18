@@ -16,4 +16,4 @@ COPY . /app
 
 ENV PORT=8080
 
-CMD ["/bin/sh", "-c", "gunicorn -w 2 -b 0.0.0.0:${PORT:-8080} app:app"]
+CMD ["/bin/sh", "-c", "gunicorn -w 1 --timeout 180 -b 0.0.0.0:${PORT:-8080} app:app"]

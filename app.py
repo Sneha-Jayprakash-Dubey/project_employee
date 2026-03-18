@@ -49,6 +49,7 @@ if os.environ.get("FLASK_ENV") == "production":
 # -------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.environ.get("MODEL_DIR", BASE_DIR)
 MODEL_VERSION = 2
 
 
@@ -191,7 +192,10 @@ def load_dataset_scale_info():
 def load_metrics():
     """Load latest model metrics (regression + classification) from disk."""
 
-    metrics_path = os.path.join(BASE_DIR, "model", "metrics.json")
+    metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+    fallback_path = os.path.join(BASE_DIR, "model", "metrics.json")
+    if not os.path.exists(metrics_path):
+        metrics_path = fallback_path
     if not os.path.exists(metrics_path):
         return {}
 
@@ -205,10 +209,11 @@ def load_metrics():
 def ensure_model_assets(force_retrain: bool = False):
     """Load model artifacts; if missing or forced, train using the dataset."""
 
-    model_path = os.path.join(BASE_DIR, "productivity_model.pkl")
-    scaler_path = os.path.join(BASE_DIR, "scaler.pkl")
-    features_path = os.path.join(BASE_DIR, "model_features.pkl")
-    classifier_path = os.path.join(BASE_DIR, "burnout_classifier.pkl")
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    model_path = os.path.join(MODEL_DIR, "productivity_model.pkl")
+    scaler_path = os.path.join(MODEL_DIR, "scaler.pkl")
+    features_path = os.path.join(MODEL_DIR, "model_features.pkl")
+    classifier_path = os.path.join(MODEL_DIR, "burnout_classifier.pkl")
     label_encoder_path = classifier_path + ".labels"
 
     def is_lfs_pointer(path: str) -> bool:
@@ -250,7 +255,7 @@ def ensure_model_assets(force_retrain: bool = False):
             scaler_path=scaler_path,
             features_path=features_path,
             classifier_path=classifier_path,
-            metrics_path=os.path.join(BASE_DIR, "model", "metrics.json"),
+            metrics_path=os.path.join(MODEL_DIR, "metrics.json"),
         )
 
     try:
@@ -267,7 +272,7 @@ def ensure_model_assets(force_retrain: bool = False):
             scaler_path=scaler_path,
             features_path=features_path,
             classifier_path=classifier_path,
-            metrics_path=os.path.join(BASE_DIR, "model", "metrics.json"),
+            metrics_path=os.path.join(MODEL_DIR, "metrics.json"),
         )
         model = joblib.load(model_path)
         scaler = joblib.load(scaler_path)
