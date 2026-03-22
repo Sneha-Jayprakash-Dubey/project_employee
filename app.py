@@ -695,6 +695,54 @@ def admin_analytics():
                     f"High-risk share is {current_high:.1f}% vs {previous_high:.1f}% ({delta:+.1f} pts)."
                 )
 
+        # Fallback insights so the panel remains useful even with limited comparison data.
+        if not insights and not current_df.empty:
+            if "result" in current_df.columns and current_df["result"].notna().any():
+                current_avg = float(current_df["result"].mean())
+                insights.append(
+                    f"Current window average productivity is {current_avg:.2f}%."
+                )
+
+            if "department" in current_df.columns and "result" in current_df.columns:
+                current_dept_nonempty = current_df.groupby("department")["result"].mean().dropna()
+                if not current_dept_nonempty.empty:
+                    top_dept = current_dept_nonempty.idxmax()
+                    top_score = float(current_dept_nonempty.max())
+                    insights.append(
+                        f"Top department in the current window: {top_dept} ({top_score:.2f}% avg productivity)."
+                    )
+
+            if "risk" in current_df.columns and current_df["risk"].notna().any():
+                risk_text = current_df["risk"].fillna("")
+                high_pct = float((risk_text.str.startswith("High").mean()) * 100)
+                mod_pct = float((risk_text.str.startswith("Moderate").mean()) * 100)
+                low_pct = max(0.0, 100.0 - high_pct - mod_pct)
+                insights.append(
+                    f"Current risk mix: High {high_pct:.1f}%, Moderate {mod_pct:.1f}%, Low {low_pct:.1f}%."
+                )
+
+            if previous_df.empty:
+                insights.append(
+                    f"Previous {compare_days}-day window has limited data; trend comparison will improve as more records are added."
+                )
+
+        # If filtered data exists but current window is empty, still show meaningful guidance.
+        if not insights and current_df.empty and not df.empty:
+            insights.append(
+                f"No records found in the last {compare_days} days for current filters; showing broader filtered trends below."
+            )
+            if "result" in df.columns and df["result"].notna().any():
+                overall_avg = float(df["result"].mean())
+                insights.append(
+                    f"Filtered dataset overall average productivity is {overall_avg:.2f}%."
+                )
+            if "risk" in df.columns and df["risk"].notna().any():
+                risk_text = df["risk"].fillna("")
+                high_pct = float((risk_text.str.startswith("High").mean()) * 100)
+                insights.append(
+                    f"High-risk share in filtered dataset is {high_pct:.1f}%."
+                )
+
         # Anomaly detection by department
         if all_departments:
             for dept in all_departments:
@@ -744,6 +792,7 @@ def admin_analytics():
                     "progress": None,
                 }
             )
+        insights.append("No predictions available for the selected filters yet. Clear filters or add new prediction records to generate insights.")
 
     # 1) Average productivity by department
     dept_avgs = get_department_averages(
