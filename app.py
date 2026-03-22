@@ -1178,6 +1178,7 @@ def admin_analytics_chart(chart_index: int):
 
     df = pd.DataFrame([dict(r) for r in history_rows]) if history_rows else pd.DataFrame()
     charts = []
+    chart_drilldowns = []
 
     dept_avgs = get_department_averages(
         days=days,
