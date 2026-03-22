@@ -474,6 +474,77 @@
     const cohortChart = {{ cohort_chart | tojson }};
     const chartMeta = [];
 
+    function toArray(values) {
+        if (Array.isArray(values)) return values;
+        // Plotly can serialize typed arrays as objects (e.g., {dtype, bdata}).
+        if (values && typeof values === 'object' && values.bdata) return [1];
+        if (values && typeof values.length === 'number') return Array.from(values);
+        return [];
+    }
+
+    function isUsableValue(value) {
+        if (value === null || value === undefined || value === '') return false;
+        const n = Number(value);
+        return Number.isFinite(n);
+    }
+
+    function traceHasUsableData(trace) {
+        if (!trace || typeof trace !== 'object') return false;
+        const type = (trace.type || '').toLowerCase();
+
+        if (type === 'pie') {
+            return toArray(trace.values).some((v) => Number(v) > 0);
+        }
+
+        if (type === 'histogram') {
+            return toArray(trace.x).some(isUsableValue);
+        }
+
+        const xs = toArray(trace.x);
+        const ys = toArray(trace.y);
+        // If Plotly-encoded objects exist, treat as usable to avoid false empty states.
+        if (trace.x && typeof trace.x === 'object' && trace.x.bdata) return true;
+        if (trace.y && typeof trace.y === 'object' && trace.y.bdata) return true;
+        if (trace.values && typeof trace.values === 'object' && trace.values.bdata) return true;
+        if (ys.length) return ys.some(isUsableValue);
+        if (xs.length) return xs.some(isUsableValue);
+        return false;
+    }
+
+    function figureHasUsableData(figure) {
+        if (!figure || !Array.isArray(figure.data) || !figure.data.length) return false;
+        return figure.data.some(traceHasUsableData);
+    }
+
+    function buildNoDataFigure(title) {
+        return {
+            data: [{
+                type: 'pie',
+                labels: ['Unavailable'],
+                values: [1],
+                hole: 0.7,
+                marker: { colors: ['#cbd5e1'] },
+                textinfo: 'label',
+                hoverinfo: 'skip',
+                sort: false
+            }],
+            layout: {
+                title: { text: title },
+                template: 'plotly_white',
+                annotations: [{
+                    text: 'Awaiting filtered data',
+                    showarrow: false,
+                    x: 0.5,
+                    y: 0.5,
+                    xref: 'paper',
+                    yref: 'paper',
+                    font: { size: 15, color: '#64748b' }
+                }],
+                showlegend: false
+            }
+        };
+    }
+
     function getQueryParams() {
         const params = new URLSearchParams(window.location.search);
         return params;
@@ -557,7 +628,11 @@
     } else {
         const cohortEl = document.getElementById('cohort_chart');
         if (cohortEl) {
-            cohortEl.innerHTML = '<div class="text-muted">Not enough data for cohort comparison yet.</div>';
+            const cohortFallback = buildNoDataFigure('Cohort Comparison');
+            Plotly.newPlot(cohortEl, cohortFallback.data, cohortFallback.layout, {
+                responsive: true,
+                displayModeBar: false,
+            });
         }
     }
 
@@ -569,13 +644,14 @@
         if (!container) return;
 
         const titleText = (data.layout && data.layout.title && (data.layout.title.text || data.layout.title)) || `Chart ${index + 1}`;
-        chartMeta[index] = { data, title: titleText };
+        const safeData = figureHasUsableData(data) ? data : buildNoDataFigure(titleText);
+        chartMeta[index] = { data: safeData, title: titleText };
         const titleButton = document.querySelector(`.chart-title[data-chart-index="${index + 1}"]`);
         if (titleButton) {
             titleButton.textContent = titleText;
         }
 
-        Plotly.newPlot(container, data.data, data.layout, {
+        Plotly.newPlot(container, safeData.data, safeData.layout, {
             responsive: true,
             displayModeBar: false,
         });

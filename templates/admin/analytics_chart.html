@@ -67,7 +67,71 @@
 <script>
     const chartData = {{ chart_json | tojson }};
     const chartEl = document.getElementById('chart_fullscreen');
-    Plotly.newPlot(chartEl, chartData.data, chartData.layout, {
+
+    function toArray(values) {
+        if (Array.isArray(values)) return values;
+        // Plotly can serialize typed arrays as objects (e.g., {dtype, bdata}).
+        if (values && typeof values === 'object' && values.bdata) return [1];
+        if (values && typeof values.length === 'number') return Array.from(values);
+        return [];
+    }
+
+    function isUsableValue(value) {
+        if (value === null || value === undefined || value === '') return false;
+        const n = Number(value);
+        return Number.isFinite(n);
+    }
+
+    function traceHasUsableData(trace) {
+        if (!trace || typeof trace !== 'object') return false;
+        const type = (trace.type || '').toLowerCase();
+        if (type === 'pie') return toArray(trace.values).some((v) => Number(v) > 0);
+        if (type === 'histogram') return toArray(trace.x).some(isUsableValue);
+        const xs = toArray(trace.x);
+        const ys = toArray(trace.y);
+        if (trace.x && typeof trace.x === 'object' && trace.x.bdata) return true;
+        if (trace.y && typeof trace.y === 'object' && trace.y.bdata) return true;
+        if (trace.values && typeof trace.values === 'object' && trace.values.bdata) return true;
+        if (ys.length) return ys.some(isUsableValue);
+        if (xs.length) return xs.some(isUsableValue);
+        return false;
+    }
+
+    function figureHasUsableData(figure) {
+        if (!figure || !Array.isArray(figure.data) || !figure.data.length) return false;
+        return figure.data.some(traceHasUsableData);
+    }
+
+    const safeChartData = figureHasUsableData(chartData)
+        ? chartData
+        : {
+            data: [{
+                type: 'pie',
+                labels: ['Unavailable'],
+                values: [1],
+                hole: 0.7,
+                marker: { colors: ['#cbd5e1'] },
+                textinfo: 'label',
+                hoverinfo: 'skip',
+                sort: false
+            }],
+            layout: {
+                title: chartData?.layout?.title || 'Chart',
+                template: 'plotly_white',
+                annotations: [{
+                    text: 'Awaiting filtered data',
+                    showarrow: false,
+                    x: 0.5,
+                    y: 0.5,
+                    xref: 'paper',
+                    yref: 'paper',
+                    font: { size: 16, color: '#64748b' }
+                }],
+                showlegend: false
+            }
+        };
+
+    Plotly.newPlot(chartEl, safeChartData.data, safeChartData.layout, {
         responsive: true,
         displayModeBar: true,
     });

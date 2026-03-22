@@ -842,94 +842,116 @@ def admin_analytics():
 
     # 3) Recent productivity trend (by record id)
     if not df.empty and "id" in df.columns and "result" in df.columns:
-        fig_trend = go.Figure(
-            go.Scatter(
-                x=df["id"],
-                y=df["result"],
-                mode="lines+markers",
-                marker=dict(color="#0ea5e9"),
-                line=dict(shape="spline", smoothing=0.6),
+        trend_df = df[["id", "result"]].copy()
+        trend_df["id"] = pd.to_numeric(trend_df["id"], errors="coerce")
+        trend_df["result"] = pd.to_numeric(trend_df["result"], errors="coerce")
+        trend_df = trend_df.dropna()
+        if not trend_df.empty:
+            fig_trend = go.Figure(
+                go.Scatter(
+                    x=trend_df["id"].tolist(),
+                    y=trend_df["result"].tolist(),
+                    mode="lines+markers",
+                    marker=dict(color="#0ea5e9"),
+                    line=dict(shape="spline", smoothing=0.6),
+                )
             )
-        )
-        fig_trend.update_layout(
-            title="Recent Productivity Scores (Trend)",
-            xaxis_title="Record ID",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_trend))
-        chart_drilldowns.append(None)
+            fig_trend.update_layout(
+                title="Recent Productivity Scores (Trend)",
+                xaxis_title="Record ID",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_trend))
+            chart_drilldowns.append(None)
 
     # 4) Productivity distribution histogram
     if not df.empty and "result" in df.columns:
-        fig_hist = go.Figure(
-            go.Histogram(x=df["result"], nbinsx=20, marker_color="#2563eb")
-        )
-        fig_hist.update_layout(
-            title="Productivity Score Distribution",
-            xaxis_title="Predicted Productivity",
-            yaxis_title="Count",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_hist))
-        chart_drilldowns.append(None)
+        result_vals = pd.to_numeric(df["result"], errors="coerce").dropna().tolist()
+        if result_vals:
+            fig_hist = go.Figure(
+                go.Histogram(x=result_vals, nbinsx=20, marker_color="#2563eb")
+            )
+            fig_hist.update_layout(
+                title="Productivity Score Distribution",
+                xaxis_title="Predicted Productivity",
+                yaxis_title="Count",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_hist))
+            chart_drilldowns.append(None)
 
     # 5) Salary vs Productivity scatter
     if not df.empty and "monthly_salary" in df.columns and "result" in df.columns:
-        fig_salary = go.Figure(
-            go.Scatter(
-                x=df["monthly_salary"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#059669", size=8, opacity=0.7),
+        salary_df = df[["monthly_salary", "result"]].copy()
+        salary_df["monthly_salary"] = pd.to_numeric(salary_df["monthly_salary"], errors="coerce")
+        salary_df["result"] = pd.to_numeric(salary_df["result"], errors="coerce")
+        salary_df = salary_df.dropna()
+        if not salary_df.empty:
+            fig_salary = go.Figure(
+                go.Scatter(
+                    x=salary_df["monthly_salary"].tolist(),
+                    y=salary_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#059669", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_salary.update_layout(
-            title="Salary vs Productivity",
-            xaxis_title="Monthly Salary",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_salary))
-        chart_drilldowns.append(None)
+            fig_salary.update_layout(
+                title="Salary vs Productivity",
+                xaxis_title="Monthly Salary",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_salary))
+            chart_drilldowns.append(None)
 
     # 6) Satisfaction vs Productivity scatter
     if not df.empty and "satisfaction_score" in df.columns and "result" in df.columns:
-        fig_sat = go.Figure(
-            go.Scatter(
-                x=df["satisfaction_score"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#f97316", size=8, opacity=0.7),
+        sat_df = df[["satisfaction_score", "result"]].copy()
+        sat_df["satisfaction_score"] = pd.to_numeric(sat_df["satisfaction_score"], errors="coerce")
+        sat_df["result"] = pd.to_numeric(sat_df["result"], errors="coerce")
+        sat_df = sat_df.dropna()
+        if not sat_df.empty:
+            fig_sat = go.Figure(
+                go.Scatter(
+                    x=sat_df["satisfaction_score"].tolist(),
+                    y=sat_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#f97316", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_sat.update_layout(
-            title="Satisfaction vs Productivity",
-            xaxis_title="Satisfaction Score",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_sat))
-        chart_drilldowns.append(None)
+            fig_sat.update_layout(
+                title="Satisfaction vs Productivity",
+                xaxis_title="Satisfaction Score",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_sat))
+            chart_drilldowns.append(None)
 
     # 7) Overtime / Work Hours vs Productivity scatter
     if not df.empty and "work_hours" in df.columns and "result" in df.columns:
-        fig_overtime = go.Figure(
-            go.Scatter(
-                x=df["work_hours"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#be123c", size=8, opacity=0.7),
+        hours_df = df[["work_hours", "result"]].copy()
+        hours_df["work_hours"] = pd.to_numeric(hours_df["work_hours"], errors="coerce")
+        hours_df["result"] = pd.to_numeric(hours_df["result"], errors="coerce")
+        hours_df = hours_df.dropna()
+        if not hours_df.empty:
+            fig_overtime = go.Figure(
+                go.Scatter(
+                    x=hours_df["work_hours"].tolist(),
+                    y=hours_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#be123c", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_overtime.update_layout(
-            title="Work Hours vs Productivity",
-            xaxis_title="Work Hours",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_overtime))
-        chart_drilldowns.append(None)
+            fig_overtime.update_layout(
+                title="Work Hours vs Productivity",
+                xaxis_title="Work Hours",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_overtime))
+            chart_drilldowns.append(None)
 
     # 8) Top employees by average productivity
     if not df.empty and "employee_id" in df.columns and "result" in df.columns:
@@ -983,44 +1005,50 @@ def admin_analytics():
 
     # 11) Productivity by work hours bucket (box plot)
     if not df.empty and "work_hours" in df.columns and "result" in df.columns:
-        # Handle low-variance filtered slices (single employee) without raising bin-edge errors.
-        if df["work_hours"].nunique() > 1:
-            df["hours_bucket"] = pd.cut(
-                df["work_hours"],
-                bins=5,
-                labels=["Very Low", "Low", "Medium", "High", "Very High"],
-                duplicates="drop",
+        box_df = df[["work_hours", "result"]].copy()
+        box_df["work_hours"] = pd.to_numeric(box_df["work_hours"], errors="coerce")
+        box_df["result"] = pd.to_numeric(box_df["result"], errors="coerce")
+        box_df = box_df.dropna()
+        if not box_df.empty:
+            if box_df["work_hours"].nunique() > 1:
+                box_df["hours_bucket"] = pd.cut(
+                    box_df["work_hours"],
+                    bins=5,
+                    labels=["Very Low", "Low", "Medium", "High", "Very High"],
+                    duplicates="drop",
+                )
+            else:
+                box_df["hours_bucket"] = "Single Range"
+            fig_box = go.Figure(
+                go.Box(
+                    x=box_df["hours_bucket"].astype(str).tolist(),
+                    y=box_df["result"].tolist(),
+                    marker_color="#14b8a6",
+                )
             )
-        else:
-            df["hours_bucket"] = "Single Range"
-        fig_box = go.Figure(
-            go.Box(
-                x=df["hours_bucket"],
-                y=df["result"],
-                marker_color="#14b8a6",
+            fig_box.update_layout(
+                title="Productivity by Work Hours Bucket",
+                xaxis_title="Work Hours Bucket",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
             )
-        )
-        fig_box.update_layout(
-            title="Productivity by Work Hours Bucket",
-            xaxis_title="Work Hours Bucket",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_box))
-        chart_drilldowns.append(None)
+            charts.append(fig_to_json_obj(fig_box))
+            chart_drilldowns.append(None)
 
     # 12) Salary distribution (box plot)
     if not df.empty and "monthly_salary" in df.columns:
-        fig_salary_box = go.Figure(
-            go.Box(y=df["monthly_salary"], marker_color="#a855f7")
-        )
-        fig_salary_box.update_layout(
-            title="Salary Distribution",
-            yaxis_title="Monthly Salary",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_salary_box))
-        chart_drilldowns.append(None)
+        salary_vals = pd.to_numeric(df["monthly_salary"], errors="coerce").dropna().tolist()
+        if salary_vals:
+            fig_salary_box = go.Figure(
+                go.Box(y=salary_vals, marker_color="#a855f7")
+            )
+            fig_salary_box.update_layout(
+                title="Salary Distribution",
+                yaxis_title="Monthly Salary",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_salary_box))
+            chart_drilldowns.append(None)
 
     # If there is no data in the selected window, show a helpful placeholder chart.
     if not charts:
@@ -1273,90 +1301,112 @@ def admin_analytics_chart(chart_index: int):
     chart_drilldowns.append("risk")
 
     if not df.empty and "id" in df.columns and "result" in df.columns:
-        fig_trend = go.Figure(
-            go.Scatter(
-                x=df["id"],
-                y=df["result"],
-                mode="lines+markers",
-                marker=dict(color="#0ea5e9"),
-                line=dict(shape="spline", smoothing=0.6),
+        trend_df = df[["id", "result"]].copy()
+        trend_df["id"] = pd.to_numeric(trend_df["id"], errors="coerce")
+        trend_df["result"] = pd.to_numeric(trend_df["result"], errors="coerce")
+        trend_df = trend_df.dropna()
+        if not trend_df.empty:
+            fig_trend = go.Figure(
+                go.Scatter(
+                    x=trend_df["id"].tolist(),
+                    y=trend_df["result"].tolist(),
+                    mode="lines+markers",
+                    marker=dict(color="#0ea5e9"),
+                    line=dict(shape="spline", smoothing=0.6),
+                )
             )
-        )
-        fig_trend.update_layout(
-            title="Recent Productivity Scores (Trend)",
-            xaxis_title="Record ID",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_trend))
-        chart_drilldowns.append(None)
+            fig_trend.update_layout(
+                title="Recent Productivity Scores (Trend)",
+                xaxis_title="Record ID",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_trend))
+            chart_drilldowns.append(None)
 
     if not df.empty and "result" in df.columns:
-        fig_hist = go.Figure(
-            go.Histogram(x=df["result"], nbinsx=20, marker_color="#2563eb")
-        )
-        fig_hist.update_layout(
-            title="Productivity Score Distribution",
-            xaxis_title="Predicted Productivity",
-            yaxis_title="Count",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_hist))
-        chart_drilldowns.append(None)
+        result_vals = pd.to_numeric(df["result"], errors="coerce").dropna().tolist()
+        if result_vals:
+            fig_hist = go.Figure(
+                go.Histogram(x=result_vals, nbinsx=20, marker_color="#2563eb")
+            )
+            fig_hist.update_layout(
+                title="Productivity Score Distribution",
+                xaxis_title="Predicted Productivity",
+                yaxis_title="Count",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_hist))
+            chart_drilldowns.append(None)
 
     if not df.empty and "monthly_salary" in df.columns and "result" in df.columns:
-        fig_salary = go.Figure(
-            go.Scatter(
-                x=df["monthly_salary"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#059669", size=8, opacity=0.7),
+        salary_df = df[["monthly_salary", "result"]].copy()
+        salary_df["monthly_salary"] = pd.to_numeric(salary_df["monthly_salary"], errors="coerce")
+        salary_df["result"] = pd.to_numeric(salary_df["result"], errors="coerce")
+        salary_df = salary_df.dropna()
+        if not salary_df.empty:
+            fig_salary = go.Figure(
+                go.Scatter(
+                    x=salary_df["monthly_salary"].tolist(),
+                    y=salary_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#059669", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_salary.update_layout(
-            title="Salary vs Productivity",
-            xaxis_title="Monthly Salary",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_salary))
-        chart_drilldowns.append(None)
+            fig_salary.update_layout(
+                title="Salary vs Productivity",
+                xaxis_title="Monthly Salary",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_salary))
+            chart_drilldowns.append(None)
 
     if not df.empty and "satisfaction_score" in df.columns and "result" in df.columns:
-        fig_sat = go.Figure(
-            go.Scatter(
-                x=df["satisfaction_score"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#f97316", size=8, opacity=0.7),
+        sat_df = df[["satisfaction_score", "result"]].copy()
+        sat_df["satisfaction_score"] = pd.to_numeric(sat_df["satisfaction_score"], errors="coerce")
+        sat_df["result"] = pd.to_numeric(sat_df["result"], errors="coerce")
+        sat_df = sat_df.dropna()
+        if not sat_df.empty:
+            fig_sat = go.Figure(
+                go.Scatter(
+                    x=sat_df["satisfaction_score"].tolist(),
+                    y=sat_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#f97316", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_sat.update_layout(
-            title="Satisfaction vs Productivity",
-            xaxis_title="Satisfaction Score",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_sat))
-        chart_drilldowns.append(None)
+            fig_sat.update_layout(
+                title="Satisfaction vs Productivity",
+                xaxis_title="Satisfaction Score",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_sat))
+            chart_drilldowns.append(None)
 
     if not df.empty and "work_hours" in df.columns and "result" in df.columns:
-        fig_overtime = go.Figure(
-            go.Scatter(
-                x=df["work_hours"],
-                y=df["result"],
-                mode="markers",
-                marker=dict(color="#be123c", size=8, opacity=0.7),
+        hours_df = df[["work_hours", "result"]].copy()
+        hours_df["work_hours"] = pd.to_numeric(hours_df["work_hours"], errors="coerce")
+        hours_df["result"] = pd.to_numeric(hours_df["result"], errors="coerce")
+        hours_df = hours_df.dropna()
+        if not hours_df.empty:
+            fig_overtime = go.Figure(
+                go.Scatter(
+                    x=hours_df["work_hours"].tolist(),
+                    y=hours_df["result"].tolist(),
+                    mode="markers",
+                    marker=dict(color="#be123c", size=8, opacity=0.7),
+                )
             )
-        )
-        fig_overtime.update_layout(
-            title="Work Hours vs Productivity",
-            xaxis_title="Work Hours",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_overtime))
-        chart_drilldowns.append(None)
+            fig_overtime.update_layout(
+                title="Work Hours vs Productivity",
+                xaxis_title="Work Hours",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_overtime))
+            chart_drilldowns.append(None)
 
     if not df.empty and "employee_id" in df.columns and "result" in df.columns:
         top_emps = (
@@ -1406,42 +1456,49 @@ def admin_analytics_chart(chart_index: int):
         chart_drilldowns.append("risk")
 
     if not df.empty and "work_hours" in df.columns and "result" in df.columns:
-        if df["work_hours"].nunique() > 1:
-            df["hours_bucket"] = pd.cut(
-                df["work_hours"],
-                bins=5,
-                labels=["Very Low", "Low", "Medium", "High", "Very High"],
-                duplicates="drop",
+        box_df = df[["work_hours", "result"]].copy()
+        box_df["work_hours"] = pd.to_numeric(box_df["work_hours"], errors="coerce")
+        box_df["result"] = pd.to_numeric(box_df["result"], errors="coerce")
+        box_df = box_df.dropna()
+        if not box_df.empty:
+            if box_df["work_hours"].nunique() > 1:
+                box_df["hours_bucket"] = pd.cut(
+                    box_df["work_hours"],
+                    bins=5,
+                    labels=["Very Low", "Low", "Medium", "High", "Very High"],
+                    duplicates="drop",
+                )
+            else:
+                box_df["hours_bucket"] = "Single Range"
+            fig_box = go.Figure(
+                go.Box(
+                    x=box_df["hours_bucket"].astype(str).tolist(),
+                    y=box_df["result"].tolist(),
+                    marker_color="#14b8a6",
+                )
             )
-        else:
-            df["hours_bucket"] = "Single Range"
-        fig_box = go.Figure(
-            go.Box(
-                x=df["hours_bucket"],
-                y=df["result"],
-                marker_color="#14b8a6",
+            fig_box.update_layout(
+                title="Productivity by Work Hours Bucket",
+                xaxis_title="Work Hours Bucket",
+                yaxis_title="Predicted Productivity",
+                template="plotly_white",
             )
-        )
-        fig_box.update_layout(
-            title="Productivity by Work Hours Bucket",
-            xaxis_title="Work Hours Bucket",
-            yaxis_title="Predicted Productivity",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_box))
-        chart_drilldowns.append(None)
+            charts.append(fig_to_json_obj(fig_box))
+            chart_drilldowns.append(None)
 
     if not df.empty and "monthly_salary" in df.columns:
-        fig_salary_box = go.Figure(
-            go.Box(y=df["monthly_salary"], marker_color="#a855f7")
-        )
-        fig_salary_box.update_layout(
-            title="Salary Distribution",
-            yaxis_title="Monthly Salary",
-            template="plotly_white",
-        )
-        charts.append(fig_to_json_obj(fig_salary_box))
-        chart_drilldowns.append(None)
+        salary_vals = pd.to_numeric(df["monthly_salary"], errors="coerce").dropna().tolist()
+        if salary_vals:
+            fig_salary_box = go.Figure(
+                go.Box(y=salary_vals, marker_color="#a855f7")
+            )
+            fig_salary_box.update_layout(
+                title="Salary Distribution",
+                yaxis_title="Monthly Salary",
+                template="plotly_white",
+            )
+            charts.append(fig_to_json_obj(fig_salary_box))
+            chart_drilldowns.append(None)
 
     if not charts:
         empty_fig = go.Figure()
@@ -1688,10 +1745,21 @@ def build_feature_vector(form):
                 except ValueError:
                     data[f] = 0.0
 
-    # Feature engineering: scale salary to thousands (20,000 -> 20) for user-entered values.
+    # Normalize salary to model scale with flexible input formats.
+    # This accepts common entry styles (62, 620, 6200, 62000) and maps to a
+    # comparable model range by reducing powers of ten based on magnitude.
     if "Monthly_Salary" in data and form.get("Monthly_Salary") not in (None, ""):
         try:
-            data["Monthly_Salary"] = float(data["Monthly_Salary"]) / 1000.0
+            salary_value = float(data["Monthly_Salary"])
+            if salary_value >= 10000:
+                salary_value = salary_value / 10000.0
+            elif salary_value >= 1000:
+                salary_value = salary_value / 1000.0
+            elif salary_value >= 100:
+                salary_value = salary_value / 100.0
+            elif salary_value >= 10:
+                salary_value = salary_value / 10.0
+            data["Monthly_Salary"] = salary_value
         except Exception:
             pass
 
